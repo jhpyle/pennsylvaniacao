@@ -81,6 +81,47 @@ def application(environ, start_response):
     start_response('200 OK', [('Content-Type', 'application/json')])
     return [json.dumps(result)]
 
+def search(**kwargs):
+    result = kwargs.get('result', dict())
+    if 'lat' in kwargs and 'lon' in kwargs:
+        district = cao_district(float(kwargs['lon']), float(kwargs['lat']))
+    elif 'address' in kwargs:
+        geocode_results = my_geocoder.geocode(kwargs['address'])
+        if geocode_results:
+            district = cao_district(float(geocode_results.longitude), float(geocode_results.latitude))
+        else:
+            district = None
+    elif 'street' in kwargs:
+        if 'state' in kwargs:
+            state = unicode(kwargs['state'])
+        else:
+            state = u'PA'
+        if 'city' in kwargs:
+            city = unicode(kwargs['city'])
+        else:
+            city = u'Philadelphia'
+        address = unicode(kwargs['street']) + u', ' + city + u', ' + state
+        geocode_results = my_geocoder.geocode(address)
+        if geocode_results:
+            district = cao_district(float(geocode_results.longitude), float(geocode_results.latitude))
+        else:
+            district = None
+    else:
+        district = None
+    result = dict()
+    if district is None:
+        result['success'] = 0
+    else:
+        result['success'] = 1
+        result['district'] = district
+        if district in info:
+            result['latitude'] = info[district]['latitude']
+            result['longitude'] = info[district]['longitude']
+            result['contact'] = info[district]['contact']
+            result['fulladdress'] = info[district]['fulladdress']
+            result['address'] = info[district]['address']
+    return result
+
 def cao_district(lon, lat):
     [lon,lat,z] = ctran.TransformPoint(lon,lat)
 
